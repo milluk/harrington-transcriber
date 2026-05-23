@@ -24,11 +24,42 @@ document.addEventListener('DOMContentLoaded', () => {
     isInverted: false,
 
     // Few-Shot Exemplars and Glossary
-    glossary: `Rule 1: Harrington documents Chumash linguistics. Glottalized sounds are written with a superscript glottal stop character: ˀ.
-Rule 2: Voiceless alveolar lateral fricatives are written with a barred-l: ł (sometimes typed as ɬ).
-Rule 3: Mid central vowel (schwa) is written as ə.
-Rule 4: High central vowel is written as ɨ.
-Rule 5: Harrington mixes Barbareño Chumash translations with notes in Spanish and English.`,
+    glossary: `========================================================================
+JOHN PEABODY HARRINGTON LINGUISTIC TRANSCRIPTION GUIDE (CHUMASH/CALIFORNIA)
+========================================================================
+Apply these paleographic and phonetic orthography keys to Harrington's cursive script:
+
+PHONETIC CONSONANTS:
+1. Glottal Stop: Transcribed as a superscript glottal mark: ˀ (looks like a superscript question mark, loop, or curly apostrophe).
+   - E.g. môˀk (water), táˀa (dog), nóˀni, číˀta.
+2. Voiceless Alveolar Lateral Fricative: Transcribed as a barred-l: ł or ɬ (often written as 'l' with a hurried horizontal cross stroke).
+3. Voiceless Postalveolar Fricative: Transcribed as 'š' (pronounced 'sh'). Written as a standard cursive 's' with a hasty caron/hacek accent above.
+4. Voiceless Postalveolar Affricate: Transcribed as 'č' (pronounced 'ch'). Written as 'c' with a hacek accent above.
+5. Velar Fricative: Transcribed as 'x' (voiceless velar fricative, as in German 'bach').
+6. Uvular Stop: Transcribed as 'q' (voiceless uvular stop).
+
+PHONETIC VOWELS:
+1. Mid-Central Vowel (Schwa): Transcribed as 'ə' (written in cursive as a rounded number '3' or reversed 'e').
+2. High-Central Unrounded Vowel: Transcribed as 'ɨ' (written in cursive as a standard letter 'i' with a horizontal bar/crossbar through the center).
+3. Low-Mid Back Rounded Vowel: Transcribed as 'ɔ' (open-o).
+
+DIACRITICS & ACCENTS:
+1. Combining Underdot (◌̣): Harrington uses underdots (e.g. ṣ, ṭ, ṇ) to mark backed or retroflexed articulations.
+2. Long Vowels: Marked with a combining macron (◌̄) above the vowel.
+3. Stress/Pitch: Harrington represents syllabic stress or high pitch with combining acute accents (◌́).
+4. Intonation Pitch Shifts: Harrington sometimes writes music notation symbols: sharp (♯) for high rising pitch, and flat (♭) for low falling pitch.
+
+ARCHIVAL ABBREVIATIONS:
+1. 'cons.' or 'c.' -> Consultor (Consultant/Informant, e.g. Fernando Librado, Maria Solares)
+2. 'inf.' or 'i.' -> Informante (Informant)
+3. 'sign.' or 's.' -> Significa (Means / translated as)
+4. 'esp.' or 'sp.' -> Español (Spanish translation glosses)
+5. 'eng.' -> English translation glosses
+6. 'lit.' -> Literal translation
+
+PALEOGRAPHY CONVENTIONS:
+- Words crossed out hurriedly should be wrapped in <del>...</del> tags.
+- Marginal notes and editorial additions are wrapped in square brackets [...] with annotations.`,
     
     exemplars: [] // Will initialize with the standard sample
   };
@@ -85,7 +116,12 @@ Rule 5: Harrington mixes Barbareño Chumash translations with notes in Spanish a
     // Dialog Guide
     guideDialog: document.getElementById('guide-dialog'),
     btnCloseGuide: document.getElementById('btn-close-guide'),
-    btnUnderstand: document.getElementById('btn-understand')
+    btnUnderstand: document.getElementById('btn-understand'),
+
+    // Directory scanning (v2.0)
+    inputDirPath: document.getElementById('input-dir-path'),
+    btnScanDir: document.getElementById('btn-scan-dir'),
+    selectScanFile: document.getElementById('select-scan-file')
   };
 
   // ==========================================================================
@@ -100,6 +136,7 @@ Rule 5: Harrington mixes Barbareño Chumash translations with notes in Spanish a
     setupSoftKeyboard();
     setupTrainingControls();
     setupFileUploading();
+    setupDirectoryScanner();
     setupDialog();
     
     // Set initial glossary UI
@@ -530,6 +567,115 @@ Rule 5: Harrington mixes Barbareño Chumash translations with notes in Spanish a
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  // ==========================================================================
+  // Local Directory Scanner & Synced Dropbox Loader (v2.0)
+  // ==========================================================================
+  function setupDirectoryScanner() {
+    el.btnScanDir.addEventListener('click', scanDirectory);
+    el.selectScanFile.addEventListener('change', loadSelectedScanFile);
+
+    // Initial check: If Troy has a synced Dropbox folder, pre-load value to make it instant!
+    // We already checked Troy's synced Dropbox folder is at '/Users/troy/Dropbox'
+    el.inputDirPath.value = '/Users/troy/Dropbox';
+  }
+
+  async function scanDirectory() {
+    const dirPath = el.inputDirPath.value.trim();
+    if (!dirPath) {
+      alert('Please enter a valid directory path to scan.');
+      return;
+    }
+
+    el.btnScanDir.disabled = true;
+    el.btnScanDir.textContent = 'Scanning...';
+
+    try {
+      const response = await fetch(`/api/scans-list?dir=${encodeURIComponent(dirPath)}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to list directory contents');
+      }
+
+      const select = el.selectScanFile;
+      select.innerHTML = '';
+
+      if (data.files.length === 0) {
+        select.innerHTML = '<option value="">-- No image files found in folder --</option>';
+        select.disabled = true;
+        showNotification('Scanned successfully. No images found.');
+        return;
+      }
+
+      // Add default option
+      const defaultOpt = document.createElement('option');
+      defaultOpt.value = '';
+      defaultOpt.textContent = `-- Select from ${data.files.length} images --`;
+      select.appendChild(defaultOpt);
+
+      // Populate list
+      data.files.forEach(file => {
+        const opt = document.createElement('option');
+        opt.value = file.path;
+        opt.textContent = file.name;
+        select.appendChild(opt);
+      });
+
+      select.disabled = false;
+      showNotification(`Scanned folder! Found ${data.files.length} scans.`);
+
+    } catch (error) {
+      console.error(error);
+      alert(`Directory scan failed: ${error.message}`);
+    } finally {
+      el.btnScanDir.disabled = false;
+      el.btnScanDir.textContent = 'Scan Folder';
+    }
+  }
+
+  async function loadSelectedScanFile() {
+    const filePath = el.selectScanFile.value;
+    if (!filePath) return;
+
+    const fileName = el.selectScanFile.options[el.selectScanFile.selectedIndex].textContent;
+    state.activeImageName = fileName;
+    el.activeImageNameTag.textContent = fileName;
+
+    // Use our server stream proxy URL as the image source!
+    const proxyUrl = `/api/scan-file?path=${encodeURIComponent(filePath)}`;
+    
+    // Animate image load transitions
+    el.notesImage.style.opacity = '0';
+    
+    // Clear editor to prepare for new transcription
+    el.editorTranscription.value = '';
+    el.editorNotes.value = '';
+    el.editorTranscription.dispatchEvent(new Event('input')); // Update line numbers
+
+    // Handle loading base64 data for AI requests
+    try {
+      // Pre-fetch the file as base64 to ensure it is immediately available for the AI engine
+      const res = await fetch(proxyUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        state.activeImageDataUrl = await convertBlobToBase64(blob);
+      }
+    } catch (err) {
+      console.warn('Failed to pre-cache selected file as base64:', err);
+    }
+
+    el.notesImage.src = proxyUrl;
+    
+    el.notesImage.onload = () => {
+      el.notesImage.style.opacity = '1';
+      // Reset zoom/pan to center the new page
+      setTimeout(() => {
+        el.btnResetCanvas.click();
+      }, 100);
+      showNotification(`Loaded scan: ${fileName}`);
+    };
   }
 
   // ==========================================================================

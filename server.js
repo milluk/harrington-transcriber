@@ -204,6 +204,99 @@ ${notes || 'No notes provided.'}
   res.send(markdown);
 });
 
+// Endpoint: List scans in a local directory (Dropbox, etc.)
+app.get('/api/scans-list', (req, res) => {
+  const dirPath = req.query.dir;
+  if (!dirPath) {
+    return res.status(400).json({ error: 'Directory path (dir) query parameter is required' });
+  }
+
+  // Resolve tilde (~) if present in the path
+  let resolvedPath = dirPath;
+  if (dirPath.startsWith('~')) {
+    resolvedPath = path.join(process.env.HOME || '/Users/troy', dirPath.slice(1));
+  }
+
+  try {
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(404).json({ error: `Directory not found: ${resolvedPath}` });
+    }
+
+    const stats = fs.statSync(resolvedPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: 'Path provided is a file, not a directory.' });
+    }
+
+    const files = fs.readdirSync(resolvedPath);
+    const supportedExtensions = ['.png', '.jpg', '.jpeg', '.tiff', '.tif', '.webp'];
+
+    const imageFiles = files
+      .filter(file => {
+        const ext = path.extname(file).toLowerCase();
+        return supportedExtensions.includes(ext) && !file.startsWith('.');
+      })
+      .map(file => {
+        const fullPath = path.join(resolvedPath, file);
+        return {
+          name: file,
+          path: fullPath
+        };
+      });
+
+    res.json({
+      directory: resolvedPath,
+      files: imageFiles
+    });
+
+  } catch (error) {
+    console.error('Scans List Error:', error);
+    res.status(500).json({ error: `Failed to scan directory: ${error.message}` });
+  }
+});
+
+// Endpoint: Stream a local image file securely (local scan proxy)
+app.get('/api/scan-file', (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath) {
+    return res.status(400).send('Path query parameter is required');
+  }
+
+  // Resolve tilde
+  let resolvedPath = filePath;
+  if (filePath.startsWith('~')) {
+    resolvedPath = path.join(process.env.HOME || '/Users/troy', filePath.slice(1));
+  }
+
+  try {
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(404).send('File not found');
+    }
+
+    const stats = fs.statSync(resolvedPath);
+    if (!stats.isFile()) {
+      return res.status(400).send('Path provided is not a file.');
+    }
+
+    const ext = path.extname(resolvedPath).toLowerCase();
+    const mimeTypes = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.webp': 'image/webp',
+      '.tiff': 'image/tiff',
+      '.tif': 'image/tiff'
+    };
+
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    fs.createReadStream(resolvedPath).pipe(res);
+
+  } catch (error) {
+    console.error('Scan File Stream Error:', error);
+    res.status(500).send(`Server error: ${error.message}`);
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`=============================================================`);
   console.log(` Harrington Transcriber server running at http://localhost:${PORT}`);

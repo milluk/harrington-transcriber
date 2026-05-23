@@ -102,6 +102,21 @@
         </div>
       </div>
 
+      <!-- Synced Dropbox & Local Folder Loader -->
+      <div class="directory-loader-bar">
+        <div class="dir-input-group">
+          <label for="input-dir-path" class="dir-label">Local Folder (e.g. Dropbox)</label>
+          <input type="text" id="input-dir-path" placeholder="e.g. ~/Dropbox or /Users/troy/Dropbox" value="~/Dropbox">
+          <button id="btn-scan-dir" class="btn btn-secondary btn-sm">Scan Folder</button>
+        </div>
+        <div class="dir-select-group">
+          <label for="select-scan-file" class="dir-label">Select microfilm scan</label>
+          <select id="select-scan-file" disabled>
+            <option value="">-- Click Scan Folder to load --</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Drag & Zoom Canvas Container -->
       <div class="canvas-viewport" id="canvas-viewport">
         <div class="canvas-instructions" id="canvas-instructions">

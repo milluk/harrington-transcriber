@@ -371,6 +371,82 @@
      Left Panel Components (Canvas and Image Adjustments)
      ========================================================================== */
   
+  /* Synced Dropbox & Local Directory Scanner */
+  .directory-loader-bar {
+    padding: 12px 20px;
+    background-color: var(--bg-panel-header);
+    border-bottom: 1px solid var(--border-subtle);
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .dir-input-group {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dir-input-group label {
+    flex-basis: 100%;
+  }
+
+  .dir-input-group input[type="text"] {
+    flex: 1;
+    height: 34px;
+    border-radius: 6px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 0 10px;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    transition: border-color var(--transition-fast);
+  }
+
+  .dir-input-group input[type="text"]:focus {
+    border-color: var(--border-focus);
+  }
+
+  .dir-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dir-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .dir-select-group select {
+    height: 34px;
+    border-radius: 6px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 0 8px;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    transition: border-color var(--transition-fast);
+  }
+
+  .dir-select-group select:focus {
+    border-color: var(--border-focus);
+  }
+
+  .dir-select-group select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
   /* Real-time Dynamic Image Filters Bar */
   .image-filters-bar {
     padding: 10px 20px;
