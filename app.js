@@ -122,7 +122,13 @@ PALEOGRAPHY CONVENTIONS:
     // Directory scanning (v2.0)
     inputDirPath: document.getElementById('input-dir-path'),
     btnScanDir: document.getElementById('btn-scan-dir'),
-    selectScanFile: document.getElementById('select-scan-file')
+    selectScanFile: document.getElementById('select-scan-file'),
+
+    // PDF Navigation Overlay (v2.0)
+    pdfNavOverlay: document.getElementById('pdf-nav-overlay'),
+    btnPdfPrev: document.getElementById('btn-pdf-prev'),
+    btnPdfNext: document.getElementById('btn-pdf-next'),
+    pdfPageInfo: document.getElementById('pdf-page-info')
   };
 
   // ==========================================================================
@@ -573,9 +579,32 @@ PALEOGRAPHY CONVENTIONS:
   // ==========================================================================
   // Local Directory Scanner & Synced Dropbox Loader (v2.0)
   // ==========================================================================
+  // ==========================================================================
+  // Local Directory Scanner, Synced Dropbox Loader, & PDF Page Manager (v2.0)
+  // ==========================================================================
+  
+  // PDF.js State variables
+  let currentPdfDoc = null;
+  let currentPdfPageNum = 1;
+  let pdfIsRendering = false;
+  let pdfPendingPageNum = null;
+
   function setupDirectoryScanner() {
     el.btnScanDir.addEventListener('click', scanDirectory);
     el.selectScanFile.addEventListener('change', loadSelectedScanFile);
+
+    // prev/next PDF page button clicks
+    el.btnPdfPrev.addEventListener('click', () => {
+      if (!currentPdfDoc || currentPdfPageNum <= 1) return;
+      currentPdfPageNum--;
+      queueRenderPage(currentPdfPageNum);
+    });
+
+    el.btnPdfNext.addEventListener('click', () => {
+      if (!currentPdfDoc || currentPdfPageNum >= currentPdfDoc.numPages) return;
+      currentPdfPageNum++;
+      queueRenderPage(currentPdfPageNum);
+    });
 
     // Initial check: Pre-load Troy Anderson's specific J.P. Harrington folder path
     el.inputDirPath.value = '/Users/troy/Dropbox/Miluk/Language/Harrington';
@@ -654,24 +683,42 @@ PALEOGRAPHY CONVENTIONS:
     const isPdf = fileName.toLowerCase().endsWith('.pdf');
 
     if (isPdf) {
-      // PDF Flow: Toggle display to iframe, hide image element
-      el.notesImage.style.display = 'none';
-      el.notesPdf.style.display = 'block';
-      el.notesPdf.src = proxyUrl;
-      
-      // Clear base64 cache as PDFs are too large for standard inline uploads
-      state.activeImageDataUrl = null;
+      // PDF Flow: Show PDF floating navigation, hide standard base64 fetch, parse using PDF.js
+      el.pdfNavOverlay.style.display = 'flex';
+      el.notesImage.style.opacity = '0.3';
+      showNotification('Loading PDF Document...');
 
-      // Reset zoom/pan so PDF displays nicely centered
-      setTimeout(() => {
-        el.btnResetCanvas.click();
-      }, 100);
-      showNotification(`Loaded PDF scan: ${fileName}`);
+      try {
+        if (!window.pdfjsLib) {
+          throw new Error('PDF.js library failed to load in this browser.');
+        }
+
+        // Initialize workers if not already done
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Load document
+        const loadingTask = pdfjsLib.getDocument(proxyUrl);
+        currentPdfDoc = await loadingTask.promise;
+        currentPdfPageNum = 1;
+
+        // Render first page
+        await renderPdfPage(currentPdfPageNum);
+
+        // Reset Zoom/Pan
+        setTimeout(() => {
+          el.btnResetCanvas.click();
+        }, 150);
+
+        showNotification(`PDF loaded successfully! ${currentPdfDoc.numPages} pages.`);
+      } catch (err) {
+        console.error('PDF.js loading failed:', err);
+        alert(`Failed to load PDF document: ${err.message}`);
+      }
     } else {
-      // Image Flow: Toggle display to image element, hide PDF iframe
-      el.notesPdf.style.display = 'none';
-      el.notesPdf.src = ''; // Release iframe memory
-      el.notesImage.style.display = 'block';
+      // Image Flow: Hide PDF Navigation overlay, load normally
+      el.pdfNavOverlay.style.display = 'none';
+      currentPdfDoc = null;
+      
       el.notesImage.style.opacity = '0';
 
       // Pre-fetch the file as base64 to ensure it is immediately available for the AI engine
@@ -694,6 +741,68 @@ PALEOGRAPHY CONVENTIONS:
         }, 100);
         showNotification(`Loaded scan: ${fileName}`);
       };
+    }
+  }
+
+  function queueRenderPage(num) {
+    if (pdfIsRendering) {
+      pdfPendingPageNum = num;
+    } else {
+      renderPdfPage(num);
+    }
+  }
+
+  async function renderPdfPage(num) {
+    if (!currentPdfDoc) return;
+    pdfIsRendering = true;
+
+    // Dim canvas image during rendering
+    el.notesImage.style.opacity = '0.4';
+
+    try {
+      const page = await currentPdfDoc.getPage(num);
+
+      // Render at a high scale scale = 2.0 to ensure excellent detail and crisp text
+      const scale = 2.0;
+      const viewport = page.getViewport({ scale: scale });
+
+      // Create an offscreen canvas to render the page
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      const renderContext = {
+        canvasContext: ctx,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+      pdfIsRendering = false;
+
+      // Extract image as base64 and feed it directly into our canvas notesImage element!
+      const dataUrl = canvas.toDataURL('image/png');
+      state.activeImageDataUrl = dataUrl;
+      
+      el.notesImage.src = dataUrl;
+      el.notesImage.style.opacity = '1';
+
+      // Update header metadata tags and floating info text
+      el.activeImageNameTag.textContent = `${state.activeImageName} (Page ${num}/${currentPdfDoc.numPages})`;
+      el.pdfPageInfo.textContent = `Page ${num} of ${currentPdfDoc.numPages}`;
+
+      // Disable/enable navigation buttons
+      el.btnPdfPrev.disabled = (num <= 1);
+      el.btnPdfNext.disabled = (num >= currentPdfDoc.numPages);
+
+      if (pdfPendingPageNum !== null) {
+        renderPdfPage(pdfPendingPageNum);
+        pdfPendingPageNum = null;
+      }
+    } catch (err) {
+      console.error('PDF page rendering error:', err);
+      pdfIsRendering = false;
+      alert(`Failed to render PDF Page ${num}: ${err.message}`);
     }
   }
 

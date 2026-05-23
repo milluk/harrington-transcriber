@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <meta name="description" content="A state-of-the-art interactive workspace designed for paleographic transcription and in-context learning model training on the linguistic field notes of John Peabody Harrington.">
+  <!-- Mozilla PDF.js for clientside PDF parsing & rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body class="theme-obsidian">
 
@@ -119,6 +121,12 @@
 
       <!-- Drag & Zoom Canvas Container -->
       <div class="canvas-viewport" id="canvas-viewport">
+        <!-- Floating PDF Navigation Overlay (v2.0) -->
+        <div class="pdf-nav-overlay" id="pdf-nav-overlay" style="display: none;">
+          <button id="btn-pdf-prev" class="btn btn-secondary btn-sm" aria-label="Previous PDF Page">◀ Prev</button>
+          <span id="pdf-page-info">Page 1 of 1</span>
+          <button id="btn-pdf-next" class="btn btn-secondary btn-sm" aria-label="Next PDF Page">Next ▶</button>
+        </div>
         <div class="canvas-instructions" id="canvas-instructions">
           Drag to Pan • Scroll to Zoom
         </div>

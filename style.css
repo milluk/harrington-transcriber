@@ -522,6 +522,33 @@
     cursor: grabbing;
   }
   
+  .pdf-nav-overlay {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(22, 22, 26, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-subtle);
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+    box-shadow: var(--shadow-md);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  #pdf-page-info {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    min-width: 100px;
+    text-align: center;
+  }
+  
   .canvas-instructions {
     position: absolute;
     bottom: 16px;
