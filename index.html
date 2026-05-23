@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J.P. Harrington Transcription & Training Workbench</title>
+  <!-- Google Fonts: Outfit (modern geometric sans-serif) & Inter (highly readable body UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="A state-of-the-art interactive workspace designed for paleographic transcription and in-context learning model training on the linguistic field notes of John Peabody Harrington.">
+</head>
+<body class="theme-obsidian">
+
+  <!-- Main Navigation Header -->
+  <header class="app-header">
+    <div class="header-branding">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="app-title">Harrington Workbench</h1>
+        <p class="app-subtitle">Paleographic Transcription & AI Training Interface</p>
+      </div>
+    </div>
+
+    <!-- Status Badges & Quick Settings -->
+    <div class="header-controls">
+      <div class="status-indicator" id="api-status-badge">
+        <span class="status-dot simulation"></span>
+        <span class="status-text" id="api-status-text">Checking API...</span>
+      </div>
+
+      <div class="mode-selector">
+        <label class="switch-container">
+          <input type="checkbox" id="simulation-toggle" checked>
+          <span class="switch-slider"></span>
+        </label>
+        <span class="mode-label">Simulation Mode</span>
+      </div>
+
+      <button id="btn-guide" class="btn btn-secondary btn-icon-only" title="Open Researcher Guide" aria-label="Open Researcher Guide">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="workspace-grid">
+    
+    <!-- LEFT PANEL: Interactive Microfilm Canvas -->
+    <section class="workspace-panel panel-canvas" aria-labelledby="canvas-heading">
+      <div class="panel-header">
+        <div class="panel-title-wrapper">
+          <h2 id="canvas-heading" class="panel-title">Microfilm Scans</h2>
+          <span class="panel-tag" id="active-image-name">sample_reel_frame1.png</span>
+        </div>
+        <div class="canvas-actions">
+          <label for="image-upload" class="btn btn-secondary btn-sm btn-icon">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Upload Scan
+          </label>
+          <input type="file" id="image-upload" accept="image/*" class="visually-hidden">
+          <button id="btn-reset-canvas" class="btn btn-secondary btn-sm btn-icon-only" title="Reset Zoom/Pan">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6"></path>
+              <path d="M9 21H3v-6"></path>
+              <path d="M21 3l-7 7"></path>
+              <path d="M3 21l7-7"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Filters / Image Adjuster Controls -->
+      <div class="image-filters-bar">
+        <div class="filter-control">
+          <label for="filter-contrast">Contrast</label>
+          <input type="range" id="filter-contrast" min="50" max="300" value="100">
+          <span class="filter-val" id="val-contrast">100%</span>
+        </div>
+        <div class="filter-control">
+          <label for="filter-brightness">Brightness</label>
+          <input type="range" id="filter-brightness" min="50" max="250" value="100">
+          <span class="filter-val" id="val-brightness">100%</span>
+        </div>
+        <div class="filter-control toggle-control">
+          <button id="btn-filter-grayscale" class="btn btn-pill active">Grayscale</button>
+          <button id="btn-filter-invert" class="btn btn-pill">Invert Ink</button>
+        </div>
+      </div>
+
+      <!-- Drag & Zoom Canvas Container -->
+      <div class="canvas-viewport" id="canvas-viewport">
+        <div class="canvas-instructions" id="canvas-instructions">
+          Drag to Pan • Scroll to Zoom
+        </div>
+        <div class="canvas-image-wrapper" id="canvas-image-wrapper">
+          <img id="notes-image" src="samples/sample_reel_frame1.png" alt="Microfilm scan of John Peabody Harrington's field notes, containing handwritten text and phonetic symbols.">
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Transcription & Annotation Workbench -->
+    <section class="workspace-panel panel-editor" aria-labelledby="editor-heading">
+      
+      <!-- Tab Selection -->
+      <div class="panel-header editor-tabs">
+        <button class="tab-btn active" data-tab="tab-transcribe">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          Transcription
+        </button>
+        <button class="tab-btn" data-tab="tab-training" id="tab-btn-training">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          In-Context Training
+          <span class="badge" id="exemplar-count">1</span>
+        </button>
+      </div>
+
+      <!-- TAB CONTENT 1: Active Transcription Editor -->
+      <div class="tab-panel active" id="tab-transcribe">
+        <div class="editor-header">
+          <label for="editor-transcription" class="editor-label">Verbatim Text (Phonetic Transcription)</label>
+          <div class="editor-actions">
+            <button id="btn-ai-transcribe" class="btn btn-primary btn-glow">
+              <svg class="ai-sparkle" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z"></path>
+              </svg>
+              Transcribe with AI
+            </button>
+          </div>
+        </div>
+
+        <!-- The Main Text Editor Container with line highlights -->
+        <div class="editor-container">
+          <div class="editor-line-numbers" id="line-numbers">1</div>
+          <textarea id="editor-transcription" placeholder="Begin typing your transcription here or click 'Transcribe with AI' to analyze Harrington's handwriting..." spellcheck="false" autocomplete="off" aria-required="true"></textarea>
+        </div>
+
+        <div class="notes-section">
+          <label for="editor-notes" class="editor-label">Linguistic & Paleographic Notes</label>
+          <textarea id="editor-notes" placeholder="Annotate any specific lexical findings, difficult phonetic alignments, ink characteristics, or informant names (e.g. Fernando Librado)..." spellcheck="false"></textarea>
+        </div>
+
+        <!-- Phonetic Keyboard Drawer -->
+        <div class="soft-keyboard-panel">
+          <div class="keyboard-header">
+            <span>Phonetic Character Legend & Input Panel</span>
+            <span class="keyboard-hint">Click characters to insert at cursor</span>
+          </div>
+          <div class="keyboard-keys">
+            <!-- Consonants / Specialized phonetic symbols -->
+            <button class="key" data-char="ˀ" title="Glottal Stop (often written as superscript '?')">ˀ</button>
+            <button class="key" data-char="š" title="Voiceless postalveolar fricative (sh)">š</button>
+            <button class="key" data-char="č" title="Voiceless postalveolar affricate (ch)">č</button>
+            <button class="key" data-char="ł" title="Voiceless alveolar lateral fricative (barred l)">ł</button>
+            <button class="key" data-char="ɬ" title="Alternative voiceless alveolar lateral fricative">ɬ</button>
+            <button class="key" data-char="ƚ" title="Barred-L variant">ƚ</button>
+            <button class="key" data-char="ʃ" title="Esh (voiceless postalveolar fricative)">ʃ</button>
+            <button class="key" data-char="ə" title="Schwa (mid central vowel, often written like a reversed e)">ə</button>
+            <button class="key" data-char="ɨ" title="High central unrounded vowel (barred i)">ɨ</button>
+            <button class="key" data-char="ɔ" title="Open-O (low-mid back rounded vowel)">ɔ</button>
+            <button class="key" data-char="ŋ" title="Eng (velar nasal)">ŋ</button>
+            <button class="key" data-char="θ" title="Theta (voiceless dental fricative)">θ</button>
+            <button class="key" data-char="’" title="Curly apostrophe / soft glottal stop">’</button>
+            <button class="key" data-char="x" title="Velar fricative">x</button>
+            <button class="key" data-char="q" title="Uvular stop">q</button>
+            <!-- Diacritics (Combining markers) -->
+            <button class="key diacritic" data-char="̣" title="Combining Underdot (e.g. ṣ)">◌̣</button>
+            <button class="key diacritic" data-char="̄" title="Combining Macron (long vowel)">◌̄</button>
+            <button class="key diacritic" data-char="́" title="Combining Acute Accent (stress)">◌́</button>
+            <button class="key diacritic" data-char="̂" title="Combining Circumflex">◌̂</button>
+            <button class="key diacritic" data-char="̀" title="Combining Grave Accent">◌̀</button>
+          </div>
+        </div>
+
+        <!-- Export/Save Footer -->
+        <footer class="editor-footer">
+          <button id="btn-save" class="btn btn-success">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Save Locally
+          </button>
+          <button id="btn-export" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export Markdown
+          </button>
+        </footer>
+      </div>
+
+      <!-- TAB CONTENT 2: In-Context Training Management -->
+      <div class="tab-panel" id="tab-training">
+        <div class="training-intro">
+          <h3>In-Context Handwriting Training Panel</h3>
+          <p>Instead of full neural weights training, we feed your verified transcripts and handwriting legends directly to Gemini as <strong>in-context examples</strong>. This allows the AI to learn and align the visual curls of Harrington's messy script with your target characters instantly.</p>
+        </div>
+
+        <!-- Section A: Custom Transcription Glossary -->
+        <div class="glossary-section">
+          <div class="section-title-bar">
+            <h4>Linguistic Legend & Glyph Guides</h4>
+            <span class="sub-hint">Define special character guidelines for the AI</span>
+          </div>
+          <textarea id="training-glossary" placeholder="Example mappings:
+- The letter that resembles a cursive, rounded '3' or reversed 'e' represents schwa (ə).
+- An apostrophe, glottal mark, or superscript '?' maps to the glottal stop (ˀ).
+- The barred l (ł) represents the lateral fricative.
+- In Spanish notes, Harrington frequently abbreviates 'Consultor' as 'Cons.' and 'Señor' as 'Sr.'"></textarea>
+        </div>
+
+        <!-- Section B: Few-Shot Exemplars -->
+        <div class="exemplars-section">
+          <div class="section-title-bar">
+            <h4>Few-Shot Exemplar Cards (Visual Training Pairs)</h4>
+            <span class="badge" id="exemplars-badge">1 Active</span>
+          </div>
+          
+          <div class="exemplars-list" id="exemplars-list">
+            <!-- Exemplar Card 1 (Sample Preloaded) -->
+            <div class="exemplar-card" id="exemplar-card-sample">
+              <div class="exemplar-thumbnail">
+                <img src="samples/sample_reel_frame1.png" alt="Exemplar thumbnail">
+              </div>
+              <div class="exemplar-details">
+                <div class="exemplar-meta">
+                  <span class="ex-name">sample_reel_frame1.png</span>
+                  <span class="ex-status">Standard Reference</span>
+                </div>
+                <div class="ex-snippet-container">
+                  <pre class="ex-snippet">môˀk (water), kəwə́ˀl (tree), táˀa (dog)...</pre>
+                </div>
+              </div>
+              <button class="btn-remove-ex" title="Cannot remove standard reference" disabled>×</button>
+            </div>
+          </div>
+
+          <!-- Add Exemplar Card -->
+          <div class="add-exemplar-bar">
+            <p class="add-ex-description">Add the current page's scan and your corrected transcription as a new exemplar card to improve subsequent transcriptions.</p>
+            <button id="btn-add-active-exemplar" class="btn btn-secondary btn-sm">
+              <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Current Transcript as Exemplar
+            </button>
+          </div>
+        </div>
+
+        <div class="model-settings-section">
+          <h4>AI Model Configuration</h4>
+          <div class="settings-grid">
+            <div class="setting-item">
+              <label for="ai-model-select">Model Version</label>
+              <select id="ai-model-select">
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Recommended - Highly Detailed)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast Transcription)</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="ai-temperature">Temperature (Precision vs. Inference)</label>
+              <div class="range-container">
+                <input type="range" id="ai-temperature" min="0.0" max="1.0" step="0.1" value="0.1">
+                <span id="val-temperature">0.1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- POPUP: Researcher Guide & Educational Walkthrough -->
+  <dialog id="guide-dialog" class="glass-dialog">
+    <div class="dialog-content">
+      <header class="dialog-header">
+        <h2>Researcher Guide: Transcribing J.P. Harrington's Notes</h2>
+        <button id="btn-close-guide" class="btn-close">&times;</button>
+      </header>
+      <div class="dialog-body">
+        <section>
+          <h3>Who was John Peabody Harrington?</h3>
+          <p>John Peabody Harrington (1884–1961) was an American linguist and ethnologist who spent his life frantically documenting the languages and oral histories of Native Americans, especially in California. His notes are legendary for three things: their immense historical value, their chaotic state (over 1 million pages written on napkins, envelopes, scraps, and legal paper), and his **extremely difficult, hurried cursive handwriting**.</p>
+        </section>
+
+        <section>
+          <h3>Deciphering Harrington's Hand & Orthography</h3>
+          <p>To record sounds exactly, Harrington created a custom, fluid phonetic orthography based on his own modifications of European characters:</p>
+          <ul>
+            <li><strong>Glottal Stop (ˀ)</strong>: Harrington often wrote this as a superscript question mark, a hook, or a curly apostrophe to denote the glottal closure in languages like Chumash.</li>
+            <li><strong>Lateral Fricative (ł)</strong>: Denotes a voiceless lateral fricative (similar to Welsh 'll'). It looks like a standard letter 'l' with a hurried crossbar through it.</li>
+            <li><strong>Barred i (ɨ)</strong>: Represents a high-central unrounded vowel, typical of Californian languages. Written as an 'i' with a cross stroke.</li>
+            <li><strong>Schwa (ə)</strong>: Written as an inverted 'e' or a figure resembling a rounded number '3' in cursive.</li>
+            <li><strong>Voiced/Voiceless Accents (ṣ, ñ, etc.)</strong>: Harrington heavily used diacritical marks including subdots, macrons for long vowels, and acute accents for stress.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>How "In-Context AI Training" Works</h3>
+          <p>Large Multimodal Models like <strong>Gemini 1.5 Pro</strong> have deep visual-textual reasoning. They do not just read text; they analyze image composition. By providing:</p>
+          <ol>
+            <li><strong>A Custom Glossary</strong>: Mapping Harrington's handwriting quirks to specific Unicode symbols.</li>
+            <li><strong>Few-Shot Exemplars</strong>: Giving the model 1–3 reference images and their correct, verified human transcriptions.</li>
+          </ol>
+          <p>The AI will align the visual shapes in your new, untranscribed scans with the reference cards, adapting in real-time to Harrington's hand and your preferred transcription conventions without costly weight fine-tuning.</p>
+        </section>
+      </div>
+      <footer class="dialog-footer">
+        <button id="btn-understand" class="btn btn-primary">Start Transcribing</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Core JS logic -->
+  <script src="app.js"></script>
+</body>
+</html>

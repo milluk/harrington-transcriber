@@ -1,0 +1,13 @@
+# Dependency directories
+node_modules/
+
+# Local configuration
+.env
+.env.local
+
+# Output files & transcripts
+transcripts/
+
+# OS metadata
+.DS_Store
+Thumbs.db
