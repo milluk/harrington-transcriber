@@ -76,6 +76,7 @@ PALEOGRAPHY CONVENTIONS:
 
     // Canvas
     notesImage: document.getElementById('notes-image'),
+    notesPdf: document.getElementById('notes-pdf'),
     canvasViewport: document.getElementById('canvas-viewport'),
     canvasImageWrapper: document.getElementById('canvas-image-wrapper'),
     activeImageNameTag: document.getElementById('active-image-name'),
@@ -576,9 +577,8 @@ PALEOGRAPHY CONVENTIONS:
     el.btnScanDir.addEventListener('click', scanDirectory);
     el.selectScanFile.addEventListener('change', loadSelectedScanFile);
 
-    // Initial check: If Troy has a synced Dropbox folder, pre-load value to make it instant!
-    // We already checked Troy's synced Dropbox folder is at '/Users/troy/Dropbox'
-    el.inputDirPath.value = '/Users/troy/Dropbox';
+    // Initial check: Pre-load Troy Anderson's specific J.P. Harrington folder path
+    el.inputDirPath.value = '/Users/troy/Dropbox/Miluk/Language/Harrington';
   }
 
   async function scanDirectory() {
@@ -612,7 +612,7 @@ PALEOGRAPHY CONVENTIONS:
       // Add default option
       const defaultOpt = document.createElement('option');
       defaultOpt.value = '';
-      defaultOpt.textContent = `-- Select from ${data.files.length} images --`;
+      defaultOpt.textContent = `-- Select from ${data.files.length} images/PDFs --`;
       select.appendChild(defaultOpt);
 
       // Populate list
@@ -643,39 +643,58 @@ PALEOGRAPHY CONVENTIONS:
     state.activeImageName = fileName;
     el.activeImageNameTag.textContent = fileName;
 
-    // Use our server stream proxy URL as the image source!
+    // Use our server stream proxy URL as the image/PDF source!
     const proxyUrl = `/api/scan-file?path=${encodeURIComponent(filePath)}`;
-    
-    // Animate image load transitions
-    el.notesImage.style.opacity = '0';
     
     // Clear editor to prepare for new transcription
     el.editorTranscription.value = '';
     el.editorNotes.value = '';
     el.editorTranscription.dispatchEvent(new Event('input')); // Update line numbers
 
-    // Handle loading base64 data for AI requests
-    try {
-      // Pre-fetch the file as base64 to ensure it is immediately available for the AI engine
-      const res = await fetch(proxyUrl);
-      if (res.ok) {
-        const blob = await res.blob();
-        state.activeImageDataUrl = await convertBlobToBase64(blob);
-      }
-    } catch (err) {
-      console.warn('Failed to pre-cache selected file as base64:', err);
-    }
+    const isPdf = fileName.toLowerCase().endsWith('.pdf');
 
-    el.notesImage.src = proxyUrl;
-    
-    el.notesImage.onload = () => {
-      el.notesImage.style.opacity = '1';
-      // Reset zoom/pan to center the new page
+    if (isPdf) {
+      // PDF Flow: Toggle display to iframe, hide image element
+      el.notesImage.style.display = 'none';
+      el.notesPdf.style.display = 'block';
+      el.notesPdf.src = proxyUrl;
+      
+      // Clear base64 cache as PDFs are too large for standard inline uploads
+      state.activeImageDataUrl = null;
+
+      // Reset zoom/pan so PDF displays nicely centered
       setTimeout(() => {
         el.btnResetCanvas.click();
       }, 100);
-      showNotification(`Loaded scan: ${fileName}`);
-    };
+      showNotification(`Loaded PDF scan: ${fileName}`);
+    } else {
+      // Image Flow: Toggle display to image element, hide PDF iframe
+      el.notesPdf.style.display = 'none';
+      el.notesPdf.src = ''; // Release iframe memory
+      el.notesImage.style.display = 'block';
+      el.notesImage.style.opacity = '0';
+
+      // Pre-fetch the file as base64 to ensure it is immediately available for the AI engine
+      try {
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          const blob = await res.blob();
+          state.activeImageDataUrl = await convertBlobToBase64(blob);
+        }
+      } catch (err) {
+        console.warn('Failed to pre-cache selected file as base64:', err);
+      }
+
+      el.notesImage.src = proxyUrl;
+      el.notesImage.onload = () => {
+        el.notesImage.style.opacity = '1';
+        // Reset zoom/pan to center the new page
+        setTimeout(() => {
+          el.btnResetCanvas.click();
+        }, 100);
+        showNotification(`Loaded scan: ${fileName}`);
+      };
+    }
   }
 
   // ==========================================================================
@@ -761,26 +780,51 @@ PALEOGRAPHY CONVENTIONS:
   }
 
   async function runLiveTranscription() {
-    // Establish target base64 image
+    // Establish target base64 image/PDF
     let targetBase64 = null;
     let mimeType = 'image/png';
 
+    const isPdf = state.activeImageName.toLowerCase().endsWith('.pdf');
+
     if (state.activeImageName === 'sample_reel_frame1.png') {
       // Convert the preloaded sample scan to base64
-      // To keep things simple and avoid canvas CORS, we fetch the image directly 
-      // or convert a canvas of it. Since the file is on our local server, we fetch:
       const imgRes = await fetch('samples/sample_reel_frame1.png');
       const blob = await imgRes.blob();
       targetBase64 = await convertBlobToBase64(blob);
       mimeType = blob.type;
+    } else if (isPdf) {
+      // PDF Flow: Fetch from local proxy stream dynamically
+      const filePath = el.selectScanFile.value;
+      if (!filePath) {
+        throw new Error('No PDF file path selected.');
+      }
+      
+      showNotification('Fetching PDF payload for AI engine...');
+      const proxyUrl = `/api/scan-file?path=${encodeURIComponent(filePath)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) {
+        throw new Error('Failed to retrieve PDF data from proxy stream.');
+      }
+      const blob = await res.blob();
+      
+      // Large file warning (Gemini API payload limits)
+      if (blob.size > 25 * 1024 * 1024) {
+        const confirmLarge = confirm(`This PDF is quite large (${(blob.size / (1024 * 1024)).toFixed(1)} MB). Microfilm rolls can exceed Gemini payload size or timeout limits. Would you like to proceed anyway? (We recommend extracting individual page scans if it fails)`);
+        if (!confirmLarge) {
+          throw new Error('Transcription canceled by researcher due to PDF size limits.');
+        }
+      }
+      
+      targetBase64 = await convertBlobToBase64(blob);
+      mimeType = 'application/pdf';
     } else {
-      // Custom uploaded file
+      // Custom uploaded file or local directory image
       if (!state.activeImageDataUrl) {
-        throw new Error('No custom image base64 data available.');
+        throw new Error('No custom image base64 data loaded. Please upload an image scan or select one from a scanned folder.');
       }
       targetBase64 = state.activeImageDataUrl;
       // Get mime type
-      const match = state.activeImageDataUrl.match(/^data:(image\/\w+);base64,/);
+      const match = state.activeImageDataUrl.match(/^data:([^;]+);base64,/);
       if (match) {
         mimeType = match[1];
       }

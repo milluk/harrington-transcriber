@@ -227,21 +227,39 @@ app.get('/api/scans-list', (req, res) => {
       return res.status(400).json({ error: 'Path provided is a file, not a directory.' });
     }
 
-    const files = fs.readdirSync(resolvedPath);
-    const supportedExtensions = ['.png', '.jpg', '.jpeg', '.tiff', '.tif', '.webp'];
+    const imageFiles = [];
+    const supportedExtensions = ['.png', '.jpg', '.jpeg', '.tiff', '.tif', '.webp', '.pdf'];
 
-    const imageFiles = files
-      .filter(file => {
-        const ext = path.extname(file).toLowerCase();
-        return supportedExtensions.includes(ext) && !file.startsWith('.');
-      })
-      .map(file => {
-        const fullPath = path.join(resolvedPath, file);
-        return {
-          name: file,
-          path: fullPath
-        };
+    function scanDirRecursive(currentPath, depth = 0) {
+      if (depth > 2) return; // Prevent infinite loops or scanning too deep
+      
+      const files = fs.readdirSync(currentPath);
+      files.forEach(file => {
+        if (file.startsWith('.')) return; // Skip hidden system files
+        
+        const fullPath = path.join(currentPath, file);
+        const stats = fs.statSync(fullPath);
+        
+        if (stats.isDirectory()) {
+          scanDirRecursive(fullPath, depth + 1);
+        } else if (stats.isFile()) {
+          const ext = path.extname(file).toLowerCase();
+          if (supportedExtensions.includes(ext)) {
+            // Get relative path for easier reading in select list dropdown
+            const relativeName = path.relative(resolvedPath, fullPath);
+            imageFiles.push({
+              name: relativeName,
+              path: fullPath
+            });
+          }
+        }
       });
+    }
+
+    scanDirRecursive(resolvedPath);
+
+    // Sort files alphabetically so they display logically
+    imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
     res.json({
       directory: resolvedPath,
